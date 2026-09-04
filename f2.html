@@ -1,0 +1,486 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#FDFCFA">
+<title>Planetarium — Phuket Real Estate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..650;1,9..144,400..650&family=Archivo:wght@800&family=Instrument+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --paper:#FDFCFA; --paper2:#F6F4F0;
+  --ink:#0E2140; --ink2:#071022; --ink-soft:#4A5A75; --ink-mute:#8C99AE;
+  --orange:#FF6E00; --orange-soft:#FFF0E4;
+  --hair:rgba(14,33,64,.12); --hair2:rgba(14,33,64,.07);
+  --tabh:70px; --headh:128px;
+  --disp:'Fraunces',Georgia,serif; --ui:'Instrument Sans',system-ui,sans-serif;
+  --shadow-card:0 1px 2px rgba(14,33,64,.05),0 10px 30px -12px rgba(14,33,64,.18);
+  --shadow-plaque:0 2px 6px rgba(14,33,64,.08),0 14px 34px -14px rgba(14,33,64,.28);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--paper)}
+body{font-family:var(--ui);color:var(--ink);-webkit-font-smoothing:antialiased;overflow:hidden}
+img{display:block}
+a{color:inherit;text-decoration:none}
+button{font-family:var(--ui);cursor:pointer}
+:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+.app{position:fixed;inset:0;max-width:520px;margin:0 auto;background:var(--paper);overflow:hidden}
+
+/* ---------- header ---------- */
+.head{position:absolute;top:0;left:0;right:0;z-index:40;background:rgba(253,252,250,.92);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--hair2);
+  padding:14px 18px 12px}
+.hrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.logo{display:flex;align-items:baseline;gap:2px}
+.logo b{font-family:var(--disp);font-weight:600;font-size:16px;letter-spacing:2px;color:var(--ink)}
+.logo i{width:6px;height:6px;border-radius:50%;background:var(--orange);display:inline-block;transform:translateY(-1px)}
+.logo small{font-size:8.5px;font-weight:600;letter-spacing:2.2px;color:var(--ink-mute);
+  text-transform:uppercase;margin-left:8px}
+.seg{display:flex;background:var(--paper2);border:1px solid var(--hair2);border-radius:22px;padding:3px}
+.seg button{border:0;background:none;color:var(--ink-soft);font-weight:600;font-size:12px;
+  padding:5px 10px;border-radius:18px;transition:.18s;letter-spacing:.2px}
+.seg button.on{background:var(--ink);color:#fff;box-shadow:0 3px 10px rgba(14,33,64,.25)}
+/* district tiles */
+.dists{display:flex;gap:9px;overflow-x:auto;scrollbar-width:none;margin:0 -18px;padding:0 18px}
+.dists::-webkit-scrollbar{display:none}
+.dtile{flex:0 0 auto;width:112px;height:66px;border-radius:14px;overflow:hidden;position:relative;
+  border:0;padding:0;background:var(--paper2)}
+.dtile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.dtile .scrim{position:absolute;inset:0;background:linear-gradient(200deg,rgba(7,16,34,.06) 0%,rgba(7,16,34,.68) 88%)}
+.dtile .nm{position:absolute;left:9px;bottom:7px;right:9px;text-align:left;color:#fff}
+.dtile .nm b{display:block;font-size:11.5px;font-weight:700;letter-spacing:.2px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.dtile .nm span{font-size:9.5px;font-weight:600;color:#FFC69B;letter-spacing:.3px}
+.dtile:active{transform:scale(.97)}
+
+/* ---------- views ---------- */
+.view{position:absolute;inset:0;visibility:hidden;opacity:0;transition:opacity .22s}
+.view.on{visibility:visible;opacity:1}
+
+/* ---------- homes (catalogue) ---------- */
+#homesv{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(var(--headh) + 16px) 18px calc(var(--tabh) + 30px);
+  scrollbar-width:none}
+#homesv::-webkit-scrollbar{display:none}
+.intro{padding:6px 2px 20px}
+.intro .eyebrow{font-size:10.5px;font-weight:700;letter-spacing:2.4px;text-transform:uppercase;
+  color:var(--orange);margin-bottom:8px}
+.intro h1{font-family:var(--disp);font-weight:500;font-size:34px;line-height:1.08;margin:0;
+  letter-spacing:-.4px;color:var(--ink)}
+.intro h1 em{font-style:italic;font-weight:450}
+.intro p{margin:10px 0 0;color:var(--ink-soft);font-size:13.5px;font-weight:500;line-height:1.5}
+
+.card{margin-bottom:34px;cursor:pointer;opacity:0;transform:translateY(16px);
+  transition:opacity .5s ease,transform .5s ease}
+.card.in{opacity:1;transform:none}
+.card .ph{position:relative;border-radius:20px;overflow:hidden;aspect-ratio:4/3;background:var(--paper2);
+  box-shadow:var(--shadow-card)}
+.card .ph img{width:100%;height:100%;object-fit:cover}
+.card .tag{position:absolute;top:12px;left:12px;background:rgba(7,16,34,.72);backdrop-filter:blur(8px);
+  color:#fff;font-size:10px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;
+  padding:6px 11px;border-radius:16px;display:flex;align-items:center;gap:6px}
+.card .tag i{width:5px;height:5px;border-radius:50%;background:var(--orange)}
+.card .cnt{position:absolute;top:12px;right:12px;background:rgba(7,16,34,.55);backdrop-filter:blur(8px);
+  color:#fff;font-size:10.5px;font-weight:600;padding:5px 9px;border-radius:14px;display:flex;gap:5px;align-items:center}
+.card .cnt svg{width:12px;height:12px}
+/* signature: the window-card plaque */
+.plaque{position:relative;margin:-34px 14px 0;background:#fff;border-radius:14px;
+  padding:14px 16px 13px 19px;box-shadow:var(--shadow-plaque);overflow:hidden}
+.plaque::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--orange)}
+.plaque .pr{font-family:var(--disp);font-weight:600;font-size:24px;line-height:1;letter-spacing:-.3px;
+  color:var(--ink);display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.plaque .pr small{font-family:var(--ui);font-size:11.5px;font-weight:600;color:var(--ink-mute);letter-spacing:.2px}
+.plaque h3{margin:6px 0 0;font-size:14px;font-weight:600;color:var(--ink-soft);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{display:flex;align-items:center;gap:7px;margin:10px 16px 0 20px;color:var(--ink-mute);
+  font-size:12.5px;font-weight:600;flex-wrap:wrap}
+.meta svg{width:13px;height:13px;flex:0 0 auto}
+.meta .sep{width:3px;height:3px;border-radius:50%;background:var(--hair);flex:0 0 auto}
+.endnote{text-align:center;color:var(--ink-mute);font-size:12px;font-weight:500;line-height:1.7;
+  padding:6px 10px 10px;border-top:1px solid var(--hair2);margin-top:6px}
+.endnote b{color:var(--ink);font-weight:600}
+
+/* ---------- map view ---------- */
+#mapv .mwrap{position:absolute;inset:0}
+#map{position:absolute;inset:0;z-index:1;background:#EAEDF0}
+#map .leaflet-tile-pane{filter:grayscale(.5) contrast(1.04)}
+.map-title{position:absolute;top:14px;left:18px;right:18px;z-index:10;pointer-events:none;display:flex;justify-content:flex-start}
+.map-chip{background:rgba(253,252,250,.94);backdrop-filter:blur(12px);border:1px solid var(--hair2);
+  border-radius:16px;padding:11px 16px;box-shadow:var(--shadow-card)}
+.map-chip h2{font-family:var(--disp);font-weight:600;font-size:17px;margin:0;color:var(--ink)}
+.map-chip p{margin:2px 0 0;color:var(--ink-soft);font-weight:500;font-size:11.5px}
+.dmark{background:var(--ink);color:#fff;border-radius:50%;display:grid;place-items:center;
+  font-family:var(--disp);font-weight:600;border:2.5px solid #fff;
+  box-shadow:0 0 0 5px rgba(14,33,64,.14),0 8px 20px rgba(14,33,64,.35)}
+.dmark small{font-family:var(--ui);font-weight:600;font-size:8px;line-height:1.2;opacity:.85;letter-spacing:.3px}
+.pmark{background:#fff;color:var(--ink);font-weight:700;font-size:11px;padding:5px 9px;border-radius:9px;
+  box-shadow:0 5px 14px rgba(14,33,64,.25);border:1.5px solid var(--orange);white-space:nowrap;font-family:var(--ui)}
+
+/* ---------- contact view ---------- */
+#contactv{overflow-y:auto;padding:30px 22px calc(var(--tabh) + 26px);background:var(--paper)}
+.chero{padding:16px 0 22px}
+.chero .eyebrow{font-size:10.5px;font-weight:700;letter-spacing:2.4px;text-transform:uppercase;
+  color:var(--orange);margin-bottom:10px}
+.chero h2{font-family:var(--disp);font-weight:500;font-size:36px;line-height:1.06;margin:0 0 12px;letter-spacing:-.4px}
+.chero h2 em{font-style:italic;font-weight:450}
+.chero p{color:var(--ink-soft);font-weight:500;font-size:14px;margin:0;line-height:1.55}
+.ccard{background:#fff;border:1px solid var(--hair2);border-radius:20px;padding:4px 18px;
+  margin-bottom:16px;box-shadow:var(--shadow-card)}
+.crow{display:flex;align-items:center;gap:14px;padding:15px 0;border-bottom:1px solid var(--hair2)}
+.crow:last-child{border-bottom:0}
+.crow .ic{width:40px;height:40px;border-radius:12px;background:var(--paper2);display:grid;place-items:center;flex:0 0 auto}
+.crow .ic svg{width:19px;height:19px;stroke:var(--ink)}
+.crow small{display:block;color:var(--ink-mute);font-size:10.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:2px}
+.crow b{font-size:14.5px;font-weight:600;color:var(--ink);word-break:break-all}
+.crow .go{margin-left:auto;color:var(--ink-mute);flex:0 0 auto}
+.crow .go svg{width:16px;height:16px}
+.bigwa{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--orange);color:#fff;
+  border-radius:17px;padding:17px;font-weight:700;font-size:15.5px;letter-spacing:.2px;
+  box-shadow:0 12px 30px -8px rgba(255,110,0,.55)}
+.bigwa:active{transform:scale(.985)}
+.bigwa svg{width:20px;height:20px}
+.note{color:var(--ink-mute);font-size:12px;font-weight:500;text-align:center;margin-top:18px;line-height:1.7}
+
+/* ---------- tab bar ---------- */
+.tabs{position:absolute;left:0;right:0;bottom:0;height:var(--tabh);z-index:50;
+  background:rgba(253,252,250,.92);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+  border-top:1px solid var(--hair2);display:flex;align-items:stretch;justify-content:space-around;
+  padding:6px 10px 10px}
+.tab{background:none;border:0;color:var(--ink-mute);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;font-size:10px;font-weight:700;letter-spacing:.8px;flex:1;border-radius:14px;transition:.2s}
+.tab svg{width:21px;height:21px;transition:.2s}
+.tab.on{color:var(--ink)}
+.tab.on svg{color:var(--orange)}
+.tab .bar{width:16px;height:3px;border-radius:2px;background:transparent;transition:.2s;margin-top:1px}
+.tab.on .bar{background:var(--orange)}
+
+/* ---------- sheets ---------- */
+.scrim{position:absolute;inset:0;background:rgba(7,16,34,.42);z-index:80;opacity:0;pointer-events:none;transition:.25s}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:90;background:var(--paper);
+  border-radius:24px 24px 0 0;max-height:93%;transform:translateY(105%);
+  transition:transform .38s cubic-bezier(.32,.72,0,1);display:flex;flex-direction:column;
+  box-shadow:0 -18px 60px rgba(7,16,34,.28)}
+.sheet.on{transform:none}
+.grab{padding:10px 0 6px;display:flex;justify-content:center;flex:0 0 auto;touch-action:none;cursor:grab}
+.grab i{width:42px;height:5px;border-radius:3px;background:rgba(14,33,64,.18)}
+.sbody{overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.sbody::-webkit-scrollbar{display:none}
+.galwrap{position:relative;margin:6px 14px 0;border-radius:18px;overflow:hidden}
+.gal{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;height:272px}
+.gal::-webkit-scrollbar{display:none}
+.gal img{flex:0 0 100%;scroll-snap-align:center;height:100%;width:100%;object-fit:cover;background:var(--paper2)}
+.galn{position:absolute;right:10px;bottom:10px;background:rgba(7,16,34,.62);backdrop-filter:blur(8px);
+  color:#fff;font-size:11px;font-weight:600;padding:5px 10px;border-radius:13px;letter-spacing:.5px}
+.gtag{position:absolute;top:10px;left:10px;background:rgba(7,16,34,.72);backdrop-filter:blur(8px);
+  color:#fff;font-size:9.5px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;
+  padding:6px 11px;border-radius:15px;display:flex;align-items:center;gap:6px}
+.gtag i{width:5px;height:5px;border-radius:50%;background:var(--orange)}
+.pbody{padding:16px 22px 28px}
+.pbody .pr{font-family:var(--disp);font-weight:600;font-size:31px;line-height:1.05;letter-spacing:-.4px;
+  color:var(--ink);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.pbody .pr small{font-family:var(--ui);font-size:12px;font-weight:600;color:var(--ink-mute)}
+.pbody h2{font-family:var(--disp);font-size:19px;font-weight:500;margin:7px 0 5px;color:var(--ink)}
+.locrow{color:var(--ink-soft);font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px}
+.locrow svg{width:14px;height:14px;flex:0 0 auto}
+.sp2{display:flex;gap:0;margin:16px 0;border:1px solid var(--hair2);border-radius:14px;
+  background:#fff;overflow:hidden}
+.sp2 span{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 4px;
+  font-weight:700;font-size:13.5px;color:var(--ink);border-right:1px solid var(--hair2)}
+.sp2 span:last-child{border-right:0}
+.sp2 svg{width:17px;height:17px;color:var(--orange)}
+.sp2 em{font-style:normal;font-size:10px;font-weight:600;color:var(--ink-mute);letter-spacing:.6px;text-transform:uppercase}
+.desc{color:var(--ink-soft);font-size:13.5px;line-height:1.65;font-weight:500}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.acts a{padding:14px;border-radius:14px;text-align:center;font-weight:700;font-size:14.5px;
+  display:flex;align-items:center;justify-content:center;gap:8px}
+.acts svg{width:17px;height:17px}
+.acts .call,.acts .mail{background:#fff;border:1.5px solid var(--hair);color:var(--ink)}
+.acts .wa{background:var(--orange);color:#fff;grid-column:1/-1;padding:16px;font-size:15px;
+  box-shadow:0 10px 26px -8px rgba(255,110,0,.55)}
+.acts .wa:active{transform:scale(.985)}
+.srclink{display:block;text-align:center;margin-top:14px;color:var(--ink-mute);font-size:12px;font-weight:600}
+.srclink u{text-decoration-color:var(--orange);text-underline-offset:3px}
+.lbody{padding:2px 16px 26px}
+.lh{padding:8px 6px 14px}
+.lh b{font-family:var(--disp);font-size:23px;font-weight:600;color:var(--ink)}
+.lh span{color:var(--ink-mute);font-size:12.5px;font-weight:600;margin-left:8px}
+.mini{display:flex;gap:13px;background:#fff;border:1px solid var(--hair2);border-radius:16px;
+  padding:9px;margin-bottom:10px;cursor:pointer;box-shadow:var(--shadow-card)}
+.mini:active{transform:scale(.99)}
+.mini img{width:94px;height:78px;border-radius:11px;object-fit:cover;flex:0 0 auto;background:var(--paper2)}
+.mini .mb{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
+.mini .p{font-family:var(--disp);font-weight:600;color:var(--ink);font-size:16px}
+.mini h4{margin:3px 0;font-size:13px;font-weight:600;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini .s{color:var(--ink-mute);font-size:11.5px;font-weight:600}
+.seeall{display:block;text-align:center;padding:14px;border:1.5px solid var(--ink);
+  color:var(--ink);font-weight:700;border-radius:14px;margin-top:8px;font-size:14px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}
+  .card{opacity:1;transform:none}}
+.plaque .pr,.pbody .pr,.mini .p,.lh b{font-family:Archivo,sans-serif!important;font-weight:800!important;letter-spacing:-.5px}
+</style>
+
+<div class="app">
+
+  <!-- header -->
+  <div class="head" id="head">
+    <div class="hrow">
+      <div class="logo"><b>PLANETARIUM</b><i></i></div>
+      <div class="seg" id="chips">
+        <button class="on" data-f="all">All</button>
+        <button data-f="buy">Buy</button>
+        <button data-f="rent">Rent</button>
+      </div>
+    </div>
+    <div class="dists" id="dists"></div>
+  </div>
+
+  <!-- HOMES -->
+  <div class="view on" id="homesv">
+    <div class="intro">
+      <div class="eyebrow">Private catalogue</div>
+      <h1>Phuket,<br><em>hand-picked.</em></h1>
+      <p id="introline"></p>
+    </div>
+    <div id="cards"></div>
+    <p class="endnote"><b>Every listing here is real</b> — live portfolio of Planetarium Phuket.<br>
+      Tap any home and the team answers about that exact property.</p>
+  </div>
+
+  <!-- MAP -->
+  <div class="view" id="mapv">
+    <div class="mwrap"><div id="map"></div></div>
+    <div class="map-title"><div class="map-chip">
+      <h2>The island, mapped</h2>
+      <p>Tap a district — zoom in, see real listings</p>
+    </div></div>
+  </div>
+
+  <!-- CONTACT -->
+  <div class="view" id="contactv">
+    <div class="chero">
+      <div class="eyebrow">Direct line</div>
+      <h2>Talk to <em>a human.</em></h2>
+      <p>Victoria & the Planetarium team answer fast — English, Русский, Français. 12 years on the island.</p>
+    </div>
+    <div class="ccard">
+      <a class="crow" href="tel:+66644044111">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.8.6a2 2 0 0 1 1.7 2Z"/></svg></span>
+        <div><small>Call</small><b>+66 64 404 4111</b></div>
+        <span class="go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></span>
+      </a>
+      <a class="crow" href="mailto:contact@planetarium-phuket.com">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
+        <div><small>Email</small><b>contact@planetarium-phuket.com</b></div>
+      </a>
+      <div class="crow">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.6"/></svg></span>
+        <div><small>Office</small><b>Phuket, Thailand</b></div>
+      </div>
+    </div>
+    <a class="bigwa" id="cwa" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-4-4.7-4.2-.1-.2-1-1.4-1-2.6s.6-1.8.9-2.1c.2-.2.5-.3.6-.3h.5c.2 0 .4 0 .5.4l.8 1.9c.1.1.1.3 0 .5l-.4.5-.3.3c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.4.1.6-.1l.8-1c.2-.2.4-.2.6-.1l1.8.9c.3.1.4.2.5.3.1.2.1.7-.1 1.3Z"/></svg>
+      Chat on WhatsApp
+    </a>
+    <p class="note">Real listings · real prices · direct line to the team.<br>No forms, no waiting.</p>
+  </div>
+
+  <!-- tab bar -->
+  <nav class="tabs">
+    <button class="tab on" data-v="homesv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 10 9-7 9 7v10a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 20Z"/><path d="M9 21.5v-8h6v8"/></svg>Homes<span class="bar"></span></button>
+    <button class="tab" data-v="mapv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 20-6-2V5l6 2m0 13 6-3m-6 3V7m6 10 6 2V8l-6-2m0 11V6M9 7l6-3"/></svg>Map<span class="bar"></span></button>
+    <button class="tab" data-v="contactv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.3-.7L3 21l1.8-5.7a8.4 8.4 0 1 1 16.2-3.8Z"/></svg>Contact<span class="bar"></span></button>
+  </nav>
+
+  <!-- sheets -->
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="pSheet">
+    <div class="grab" data-grab><i></i></div>
+    <div class="sbody">
+      <div class="galwrap">
+        <div class="gal" id="pGal"></div>
+        <div class="gtag" id="pTag"></div>
+        <div class="galn" id="pGalN"></div>
+      </div>
+      <div class="pbody" id="pBody"></div>
+    </div>
+  </div>
+  <div class="sheet" id="lSheet">
+    <div class="grab" data-grab><i></i></div>
+    <div class="sbody"><div class="lbody" id="lBody"></div></div>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const DATA = [{"id": 1, "title": "3-Bedroom Sansuri", "price": "11,900,000฿", "location": "Bang Tao", "beds": "3", "baths": "2", "area": "180", "status": "buy", "url": "https://planetarium-phuket.com/property/3-bedroom-sansuri-resale/", "images": ["p01_0.webp", "p01_1.webp", "p01_2.webp"], "mapDistrict": "Bang Tao"}, {"id": 2, "title": "Beachfront Villa", "price": "18,887,000฿", "location": "Rawai", "beds": "3", "baths": "3", "area": "314", "status": "buy", "url": "https://planetarium-phuket.com/property/exclusive-village-beachfront-in-rawai/", "images": ["p02_0.webp", "p02_1.webp", "p02_2.webp", "p02_3.webp"], "mapDistrict": "Rawai"}, {"id": 3, "title": "Panorama Kata Oceanview", "price": "11,044,000฿", "location": "Kata", "beds": "2", "baths": "2", "area": "138.05", "status": "buy", "url": "https://planetarium-phuket.com/property/panorama-kata-oceanview/", "images": ["p03_0.webp", "p03_1.webp", "p03_2.webp", "p03_3.webp"], "mapDistrict": "Kata"}, {"id": 4, "title": "Condo near Karon Beach", "price": "8,460,000฿", "location": "Karon", "beds": "1", "baths": "1", "area": "47", "status": "buy", "url": "https://planetarium-phuket.com/property/condominium-near-the-karon-beach/", "images": ["p04_0.webp", "p04_1.webp", "p04_2.webp"], "mapDistrict": "Kata"}, {"id": 6, "title": "1-Bedroom Ozone Resale", "price": "5,100,000฿", "location": "Bang Tao", "beds": "1", "baths": "1", "area": "42", "status": "buy", "url": "https://planetarium-phuket.com/property/1-bedroom-ozone-resale/", "images": ["p06_0.webp", "p06_1.webp", "p06_2.webp"], "mapDistrict": "Bang Tao"}, {"id": 7, "title": "Condo at Naithon", "price": "5,959,350฿", "location": "Naithon", "beds": "1", "baths": "1", "area": "36.9", "status": "buy", "url": "https://planetarium-phuket.com/property/condominium-at-naithon/", "images": ["p07_0.webp", "p07_1.webp", "p07_2.webp"], "mapDistrict": "Bang Tao"}, {"id": 8, "title": "4BR Villa by Laguna", "price": "27,900,000฿", "location": "Bang Tao", "beds": "4", "baths": "5", "area": "329", "status": "buy", "url": "https://planetarium-phuket.com/property/4-bedroom-villas-next-door-to-laguna-phuket/", "images": ["p08_0.webp", "p08_1.webp", "p08_2.webp"], "mapDistrict": "Bang Tao"}, {"id": 9, "title": "2BR Laguna Village", "price": "16,500,000฿", "location": "Bang Tao", "beds": "2", "baths": "2", "area": "222", "status": "buy", "url": "https://planetarium-phuket.com/property/2-bedrooms-laguna-village-resale/", "images": ["p09_0.webp", "p09_1.webp", "p09_2.webp"], "mapDistrict": "Bang Tao"}, {"id": 10, "title": "New Residence · South Phuket", "price": "6,426,000฿", "location": "Rawai", "beds": "1", "baths": "1", "area": "42", "status": "buy", "url": "https://planetarium-phuket.com/property/a-new-residential-complex-in-the-south-of-phuket/", "images": ["p10_0.webp", "p10_1.webp", "p10_2.webp"], "mapDistrict": "Rawai"}, {"id": 11, "title": "Resort-Style Condo, Bang Tao", "price": "4,768,000฿", "location": "Bang Tao", "beds": "1", "baths": "1", "area": "32", "status": "buy", "url": "https://planetarium-phuket.com/property/resort-style-condo-at-bangtao/", "images": ["p11_0.webp", "p11_1.webp", "p11_2.webp", "p11_3.webp"], "mapDistrict": "Bang Tao"}, {"id": 12, "title": "Premium Apartments · Bang Tao", "price": "5,500,000฿", "location": "Bang Tao", "beds": "1", "baths": "1", "area": "38.48", "status": "buy", "url": "https://planetarium-phuket.com/property/premium-apartment-complex-in-bangtao-area/", "images": ["p12_0.webp", "p12_1.webp", "p12_2.webp", "p12_3.webp"], "mapDistrict": "Bang Tao"}, {"id": 13, "title": "Residence near Kamala Beach", "price": "9,817,275฿", "location": "Kamala", "beds": "1", "baths": "1", "area": "46", "status": "buy", "url": "https://planetarium-phuket.com/property/mont-azure-lake-side/", "images": ["p13_0.webp", "p13_1.webp", "p13_2.webp"], "mapDistrict": "Kamala"}, {"id": 20, "title": "Room · Anantara Mai Khao 5★", "price": "120,000฿/month/longrent", "location": "Mai Khao", "beds": "4", "baths": "5", "area": "222", "status": "rent", "url": "https://planetarium-phuket.com/property/room-in-anantara-mai-khao-5/", "images": ["r20_0.webp", "r20_1.webp", "r20_2.webp", "r20_3.webp"], "mapDistrict": "Bang Tao"}, {"id": 21, "title": "1BR VIP Mercury, Rawai", "price": "2,000฿/perday", "location": "Rawai", "beds": "1", "baths": "1", "area": "36.8", "status": "rent", "url": "https://planetarium-phuket.com/property/1-bedroom-rawai-vip-mercury-for-rent/", "images": ["r21_0.webp", "r21_1.webp", "r21_2.webp"], "mapDistrict": "Rawai"}, {"id": 22, "title": "1BR Laguna Skypark", "price": "42,000฿/permonth", "location": "Bang Tao", "beds": "1", "baths": "1", "area": "39", "status": "rent", "url": "https://planetarium-phuket.com/property/1-bedroom-laguna-skypark-for-rent/", "images": ["r22_0.webp", "r22_1.webp", "r22_2.webp"], "mapDistrict": "Bang Tao"}, {"id": 23, "title": "3BR Villa Sunpao", "price": "220,000฿/permonth", "location": "Chalong", "beds": "3", "baths": "3", "area": "257", "status": "rent", "url": "https://planetarium-phuket.com/property/3-bedrooms-villa-sunpao-for-rent/", "images": ["r23_0.webp", "r23_1.webp", "r23_2.webp"], "mapDistrict": "Rawai"}, {"id": 24, "title": "Studio · Chalong", "price": "25,000฿/permonth", "location": "Chalong", "beds": "1", "baths": "1", "area": "29.8", "status": "rent", "url": "https://planetarium-phuket.com/property/room-space-for-rent-chalong/", "images": ["r24_0.webp", "r24_1.webp", "r24_2.webp"], "mapDistrict": "Rawai"}];
+const DISTRICTS = [{"name": "Bang Tao", "count": 212, "coord": [8.015, 98.297], "img": "p01_0.webp", "link": "https://planetarium-phuket.com/search-results/?keyword=Bang%20Tao"}, {"name": "Kata", "count": 97, "coord": [7.812, 98.288], "img": "p03_0.webp", "link": "https://planetarium-phuket.com/search-results/?keyword=Kata"}, {"name": "Patong", "count": 39, "coord": [7.876, 98.268], "img": "p11_0.webp", "link": "https://planetarium-phuket.com/search-results/?keyword=Patong"}, {"name": "Kamala", "count": 22, "coord": [7.958, 98.24], "img": "p13_0.webp", "link": "https://planetarium-phuket.com/search-results/?keyword=Kamala"}, {"name": "Phuket Town", "count": 15, "coord": [7.888, 98.398], "img": "p04_0.webp", "link": "https://planetarium-phuket.com/search-results/?keyword=Phuket%20Town"}, {"name": "Rawai", "count": 11, "coord": [7.748, 98.356], "img": "p02_0.webp", "link": "https://planetarium-phuket.com/search-results/?keyword=Rawai"}];
+const PHONE="+66644044111", EMAIL="contact@planetarium-phuket.com";
+const waLink=t=>`https://api.whatsapp.com/send?phone=${PHONE}&text=`+encodeURIComponent(t);
+const waGeneric=waLink("Здравствуйте! Пишу из мобильного каталога Planetarium — интересует недвижимость на Пхукете.");
+document.getElementById('cwa').href=waGeneric;
+
+const I={
+ bed:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 17v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5M2 17h20M2 17v3M22 17v3M6 10V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/></svg>',
+ bath:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12V6a2 2 0 0 1 3.4-1.4M4 12h16a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4v-1a1 1 0 0 1 1-1Zm3 6-1 2m11-2 1 2M7 6h1.5"/></svg>',
+ area:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>',
+ pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.6"/></svg>',
+ cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="14" r="3.2"/></svg>',
+ wa:'<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2Zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-4-4.7-4.2-.1-.2-1-1.4-1-2.6s.6-1.8.9-2.1c.2-.2.5-.3.6-.3h.5c.2 0 .4 0 .5.4l.8 1.9c.1.1.1.3 0 .5l-.4.5-.3.3c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.4.1.6-.1l.8-1c.2-.2.4-.2.6-.1l1.8.9c.3.1.4.2.5.3.1.2.1.7-.1 1.3Z"/></svg>',
+ call:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.8.6a2 2 0 0 1 1.7 2Z"/></svg>',
+ mail:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>'
+};
+const priceParts=p=>{
+  const raw=p.price; const m=raw.match(/^([\d,]+)฿(.*)$/);
+  if(!m) return {main:raw,suf:""};
+  let s=(m[2]||"").replace(/^\//,"").replace(/\//g," · ").replace("longrent","long rent")
+    .replace("permonth","per month").replace("perday","per day").replace("month","per month")
+    .replace("per per","per").replace("yearcontract","year contract").trim();
+  return {main:"฿"+m[1], suf:s};
+};
+
+let filter='all';
+const visible=()=>DATA.filter(p=>filter==='all'||p.status===filter);
+document.getElementById('introline').textContent=
+  `${DATA.filter(p=>p.status==='buy').length} homes for sale · ${DATA.filter(p=>p.status==='rent').length} for rent — real listings, updated by the team.`;
+
+/* ---------- catalogue ---------- */
+let io=null;
+function renderCards(){
+  const wrap=document.getElementById('cards'); wrap.innerHTML='';
+  if(io) io.disconnect();
+  io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{rootMargin:'60px 0px'});
+  visible().forEach((p,idx)=>{
+    const pp=priceParts(p);
+    const c=document.createElement('article'); c.className='card';
+    c.innerHTML=`
+      <div class="ph">
+        <img loading="${idx<2?'eager':'lazy'}" src="img/${p.images[0]}" alt="${p.title}">
+        <span class="tag"><i></i>${p.status==='rent'?'For rent':'For sale'}</span>
+        <span class="cnt">${I.cam}${p.images.length}</span>
+      </div>
+      <div class="plaque">
+        <div class="pr">${pp.main}${pp.suf?`<small>${pp.suf}</small>`:''}</div>
+        <h3>${p.title}</h3>
+      </div>
+      <div class="meta">
+        ${I.pin}${p.location}
+        ${p.beds?`<span class="sep"></span>${p.beds} bd`:''}
+        ${p.baths?`<span class="sep"></span>${p.baths} ba`:''}
+        ${p.area?`<span class="sep"></span>${p.area} m²`:''}
+      </div>`;
+    c.onclick=()=>openProp(p);
+    wrap.appendChild(c); io.observe(c);
+  });
+}
+
+/* ---------- district tiles ---------- */
+function renderDists(){
+  const s=document.getElementById('dists'); s.innerHTML='';
+  DISTRICTS.forEach(d=>{
+    const el=document.createElement('button'); el.className='dtile';
+    el.innerHTML=`<img loading="lazy" src="img/${d.img}" alt="${d.name}"><span class="scrim"></span>
+      <span class="nm"><b>${d.name}</b><span>${d.count} listings</span></span>`;
+    el.onclick=()=>openListSheet(d);
+    s.appendChild(el);
+  });
+}
+
+/* ---------- tabs ---------- */
+const views={homesv:document.getElementById('homesv'),mapv:document.getElementById('mapv'),contactv:document.getElementById('contactv')};
+let mapInited=false,map;
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));
+  Object.entries(views).forEach(([k,v])=>v.classList.toggle('on',k===t.dataset.v));
+  document.getElementById('head').style.display = t.dataset.v==='homesv'?'':'none';
+  if(t.dataset.v==='mapv'&&!mapInited){initMap();mapInited=true;setTimeout(()=>map.invalidateSize(),120);}
+  else if(t.dataset.v==='mapv'){setTimeout(()=>map.invalidateSize(),120);}
+});
+
+/* ---------- filter ---------- */
+document.querySelectorAll('#chips button').forEach(c=>c.onclick=()=>{
+  filter=c.dataset.f;
+  document.querySelectorAll('#chips button').forEach(x=>x.classList.toggle('on',x===c));
+  renderCards();
+  document.getElementById('homesv').scrollTo({top:0});
+});
+
+/* ---------- map ---------- */
+let pmarks=[];
+function initMap(){
+  map=L.map('map',{attributionControl:false,zoomControl:false}).setView([7.90,98.33],10.4);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+  L.control.attribution({prefix:false}).addAttribution('© OpenStreetMap contributors').addTo(map);
+  DISTRICTS.forEach(d=>{
+    const sz=Math.max(46,Math.min(66,38+d.count/6));
+    const icon=L.divIcon({className:'',html:`<div class="dmark" style="width:${sz}px;height:${sz}px;font-size:${sz*0.30}px">${d.count}<small>${d.name.split(' ')[0]}</small></div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
+    L.marker(d.coord,{icon}).addTo(map).on('click',()=>{map.flyTo(d.coord,12.6,{duration:.7});showPins(d);setTimeout(()=>openListSheet(d),400);});
+  });
+}
+function showPins(d){
+  pmarks.forEach(m=>map.removeLayer(m));pmarks=[];
+  DATA.filter(p=>p.mapDistrict===d.name).forEach((p,i)=>{
+    const jt=[d.coord[0]+Math.sin(i*2.1)*0.013,d.coord[1]+Math.cos(i*1.6)*0.015];
+    const icon=L.divIcon({className:'',html:`<div class="pmark">${priceParts(p).main}</div>`,iconSize:[70,26],iconAnchor:[35,13]});
+    pmarks.push(L.marker(jt,{icon}).addTo(map).on('click',()=>openProp(p)));
+  });
+}
+
+/* ---------- sheets ---------- */
+const scrim=document.getElementById('scrim');
+function openSheet(el){document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));el.classList.add('on');scrim.classList.add('on');el.querySelector('.sbody').scrollTop=0;}
+function closeSheets(){document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));scrim.classList.remove('on');}
+scrim.onclick=closeSheets;
+
+function openProp(p){
+  const pp=priceParts(p);
+  const gal=document.getElementById('pGal'),galn=document.getElementById('pGalN');
+  document.getElementById('pTag').innerHTML=`<i></i>${p.status==='rent'?'For rent':'For sale'}`;
+  gal.innerHTML=p.images.map(i=>`<img src="img/${i}" alt="${p.title}">`).join('');
+  galn.textContent=`1 / ${p.images.length}`;
+  gal.onscroll=()=>{const idx=Math.round(gal.scrollLeft/gal.clientWidth);galn.textContent=`${idx+1} / ${p.images.length}`;};
+  document.getElementById('pBody').innerHTML=`
+    <div class="pr">${pp.main}${pp.suf?`<small>${pp.suf}</small>`:''}</div>
+    <h2>${p.title}</h2>
+    <div class="locrow">${I.pin} ${p.location}, Phuket</div>
+    <div class="sp2">
+      ${p.beds?`<span>${I.bed}${p.beds}<em>bed</em></span>`:''}
+      ${p.baths?`<span>${I.bath}${p.baths}<em>bath</em></span>`:''}
+      ${p.area?`<span>${I.area}${p.area}<em>m²</em></span>`:''}
+    </div>
+    <div class="desc">Real listing from Planetarium's live portfolio in ${p.location}. Photos, price and specs come straight from the agency — reach out below and the team answers about this exact property.</div>
+    <div class="acts">
+      <a class="call" href="tel:${PHONE}">${I.call} Call</a>
+      <a class="mail" href="mailto:${EMAIL}?subject=${encodeURIComponent('Interested: '+p.title)}">${I.mail} Email</a>
+      <a class="wa" href="${waLink(`Здравствуйте! Интересует: ${p.title} — ${p.price} (${p.location}). ${p.url}`)}" target="_blank" rel="noopener">${I.wa} Ask on WhatsApp</a>
+    </div>
+    <a class="srclink" href="${p.url}" target="_blank" rel="noopener">View original listing — <u>planetarium-phuket.com</u></a>`;
+  openSheet(document.getElementById('pSheet'));
+  gal.scrollLeft=0;
+}
+function openListSheet(d){
+  const items=DATA.filter(p=>p.mapDistrict===d.name);
+  document.getElementById('lBody').innerHTML=
+    `<div class="lh"><b>${d.name}</b><span>${d.count} listings on the island</span></div>`+
+    (items.length?items.map(p=>`<div class="mini" data-id="${p.id}">
+      <img src="img/${p.images[0]}" alt="${p.title}">
+      <div class="mb"><div class="p">${priceParts(p).main}</div><h4>${p.title}</h4>
+      <div class="s">${p.location} · ${p.beds?p.beds+' bd · ':''}${p.area?p.area+' m²':''}</div></div></div>`).join('')
+     :`<div style="color:var(--ink-mute);font-weight:600;padding:4px 6px 14px">Fresh listings in ${d.name} are updated weekly — ask the team what just came in.</div>`)+
+    `<a class="seeall" href="${d.link}" target="_blank" rel="noopener">All ${d.name} listings →</a>`;
+  document.querySelectorAll('#lBody .mini').forEach(m=>m.onclick=()=>openProp(DATA.find(x=>x.id==m.dataset.id)));
+  openSheet(document.getElementById('lSheet'));
+}
+
+/* swipe down closes sheet */
+document.querySelectorAll('[data-grab]').forEach(g=>{
+  let sy=0,dy=0,drag=false;const sh=g.closest('.sheet');
+  const st=e=>{drag=true;sy=(e.touches?e.touches[0].clientY:e.clientY);sh.style.transition='none';};
+  const mv=e=>{if(!drag)return;dy=(e.touches?e.touches[0].clientY:e.clientY)-sy;if(dy<0)dy=0;sh.style.transform=`translateY(${dy}px)`;};
+  const en=()=>{if(!drag)return;drag=false;sh.style.transition='';if(dy>110)closeSheets();sh.style.transform='';dy=0;};
+  g.addEventListener('touchstart',st,{passive:true});g.addEventListener('touchmove',mv,{passive:true});g.addEventListener('touchend',en);
+  g.addEventListener('mousedown',st);window.addEventListener('mousemove',mv);window.addEventListener('mouseup',en);
+});
+
+renderCards(); renderDists();
+</script>
