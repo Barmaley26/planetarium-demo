@@ -453,7 +453,7 @@ function openProp(p){
       <a class="mail" href="mailto:${EMAIL}?subject=${encodeURIComponent('Interested: '+p.title)}">${I.mail} Email</a>
       <a class="wa" href="${waLink(`Здравствуйте! Интересует: ${p.title} — ${p.price} (${p.location}). ${p.url}`)}" target="_blank" rel="noopener">${I.wa} Ask on WhatsApp</a>
     </div>
-    <a class="srclink" href="${p.url}" target="_blank" rel="noopener">View original listing — <u>planetarium-phuket.com</u></a>`;
+`;
   openSheet(document.getElementById('pSheet'));
   gal.scrollLeft=0;
 }
@@ -466,7 +466,7 @@ function openListSheet(d){
       <div class="mb"><div class="p">${priceParts(p).main}</div><h4>${p.title}</h4>
       <div class="s">${p.location} · ${p.beds?p.beds+' bd · ':''}${p.area?p.area+' m²':''}</div></div></div>`).join('')
      :`<div style="color:var(--ink-mute);font-weight:600;padding:4px 6px 14px">Fresh listings in ${d.name} are updated weekly — ask the team what just came in.</div>`)+
-    `<a class="seeall" href="${d.link}" target="_blank" rel="noopener">All ${d.name} listings →</a>`;
+    `<a class="seeall" href="${waLink(`Здравствуйте! Интересуют объекты в районе ${d.name} (у вас их ${d.count}). Что есть сейчас?`)}" target="_blank" rel="noopener">Ask about all ${d.count} ${d.name} listings →</a>`;
   document.querySelectorAll('#lBody .mini').forEach(m=>m.onclick=()=>openProp(DATA.find(x=>x.id==m.dataset.id)));
   openSheet(document.getElementById('lSheet'));
 }
